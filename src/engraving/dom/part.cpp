@@ -350,12 +350,33 @@ void Part::setInstruments(const InstrumentList& instruments)
 
 void Part::removeInstrument(const Fraction& tick)
 {
-    auto i = m_instruments.find(tick.ticks());
-    if (i == m_instruments.end()) {
+    auto it = m_instruments.find(tick.ticks());
+    if (it == m_instruments.end()) {
         LOGD("Part::removeInstrument: not found at tick %d", tick.ticks());
         return;
     }
-    m_instruments.erase(i);
+
+    m_instruments.erase(it);
+
+    // Ensure the next instrument change has a correct clef
+    auto next = m_instruments.upper_bound(tick.ticks());
+    if (next == m_instruments.end())
+        return;
+
+    Fraction nextTick = Fraction::fromTicks(next->first);
+    Instrument* nextInstr = next->second;
+
+    for (Staff* s : m_staves) {
+        if (!s)
+            continue;
+
+        ClefTypeList ct = s->clefType(nextTick);
+        if (ct.concertClef != ClefType::INVALID)
+            continue;
+
+        ClefType newClef = nextInstr->clefType(s->idx()).concertClef;
+        score()->undoChangeClef(s, nullptr, newClef, true);
+    }
 }
 
 //---------------------------------------------------------
