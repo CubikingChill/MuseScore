@@ -714,29 +714,133 @@ void Staff::setClef(Clef* clef)
 
 void Staff::removeClef(const Clef* clef)
 {
+    Fraction tick = clef->segment()->tick();
+    int track = clef->track();
+
+    //
+    // 1. Generated clefs (instrument-change clefs)
+    //
     if (clef->generated()) {
+        const Instrument* instr = part()->instrument(tick);
+        if (instr) {
+            ClefType desired = instr->clefType(idx()).concertClef;
+            if (desired != clef->clefTypeList().concertClef) {
+                score()->undoChangeClef(
+                    this,
+                    clef->segment(),
+                    desired,
+                    true,
+                    nullptr
+                );
+            }
+        }
         return;
     }
-    Fraction tick = clef->segment()->tick();
+
+    //
+    // 2. Remove backend clef at this tick
+    //
     for (Segment* s = clef->segment()->next1(); s && s->tick() == tick; s = s->next1()) {
         if ((s->segmentType() == SegmentType::Clef || s->segmentType() == SegmentType::HeaderClef)
-            && s->element(clef->track())
-            && !s->element(clef->track())->generated()) {
-            // removal of this clef has no effect on the clefs list
-            return;
+            && s->element(track)
+            && !s->element(track)->generated()) {
+            return; // another real clef at same tick
         }
     }
-    m_clefs.erase(clef->segment()->tick().ticks());
+
+    m_clefs.erase(tick.ticks());
+
+    // Restore earlier clef at same tick if present
     for (Segment* s = clef->segment()->prev1(); s && s->tick() == tick; s = s->prev1()) {
         if ((s->segmentType() == SegmentType::Clef || s->segmentType() == SegmentType::HeaderClef)
-            && s->element(clef->track())
-            && !s->element(clef->track())->generated()) {
-            // a previous clef at the same tick position gets valid
-            m_clefs.setClef(tick.ticks(), toClef(s->element(clef->track()))->clefTypeList());
+            && s->element(track)
+            && !s->element(track)->generated()) {
+
+            m_clefs.setClef(
+                tick.ticks(),
+                toClef(s->element(track))->clefTypeList()
+            );
             break;
         }
     }
-    DUMP_CLEFS("removeClef");
+
+    //
+    // 3. Find next instrument change
+    //
+    Segment* nextInstrChange = nullptr;
+    for (Segment* s = clef->segment()->next1(); s; s = s->next1()) {
+        EngravingItem* e = s->element(track);
+        if (e && e->type() == ElementType::INSTRUMENT_CHANGE) {
+            nextInstrChange = s;
+            break;
+        }
+    }
+
+    if (!nextInstrChange)
+        return;
+
+    Fraction instrTick = nextInstrChange->tick();
+
+    //
+    // 4. Compute C_before
+    //
+    ClefTypeList C_before_list = m_clefs.clef(instrTick.ticks() - 1);
+    ClefType C_before = C_before_list.concertClef;
+    if (C_before == ClefType::INVALID)
+        return;
+
+    //
+    // 5. Compute C_default
+    //
+    const Instrument* instr = part()->instrument(instrTick);
+    if (!instr)
+        return;
+
+    ClefType C_default = instr->clefType(idx()).concertClef;
+
+    //
+    // 6. Compute C_after
+    //
+    ClefType C_after = ClefType::INVALID;
+    for (Segment* s = nextInstrChange->next1(); s; s = s->next1()) {
+        EngravingItem* e = s->element(track);
+        if (e && (e->type() == ElementType::CLEF || e->type() == ElementType::HEADERCLEF)) {
+            C_after = toClef(e)->clefTypeList().concertClef;
+            break;
+        }
+    }
+
+    //
+    // 7. Decide clef at the instrument change
+    //
+    if (C_before == C_default) {
+        // Remove clef at instrument change
+        EngravingItem* e = nextInstrChange->element(track);
+        if (e && (e->type() == ElementType::CLEF || e->type() == ElementType::HEADERCLEF))
+            score()->undoRemoveElement(e);
+    } else {
+        // Insert C_before at instrument change
+        score()->undoChangeClef(
+            this,
+            nextInstrChange,
+            C_before,
+            true,
+            nullptr
+        );
+    }
+
+    //
+    // 8. Redundancy cleanup (only if instrument change was removed earlier)
+    //
+    if (C_after != ClefType::INVALID && C_after == C_before) {
+        for (Segment* s = nextInstrChange->next1(); s; s = s->next1()) {
+            EngravingItem* e = s->element(track);
+            if (e && (e->type() == ElementType::CLEF || e->type() == ElementType::HEADERCLEF)) {
+                score()->undoRemoveElement(e);
+                break;
+            }
+        }
+    }
 }
 
 //---------------------------------------------------------
