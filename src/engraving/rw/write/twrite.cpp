@@ -2123,6 +2123,15 @@ void TWrite::write(const InstrumentChange* item, XmlWriter& xml, WriteContext& c
         xml.tag("init", item->init());
     }
     writeProperties(toTextBase(item), xml, ctx, true);
+    //Write default clefs ---
+    xml.startElement("defaultClefs");
+    for (const ClefTypeList& list : item->defaultClefs()) {
+        xml.startElement("clef");
+        xml.tag("concert", TConv::toXml(list.concertClef));
+        xml.tag("transposing", TConv::toXml(list.transposingClef));
+        xml.endElement(); // </clef>
+    }
+    xml.endElement(); // </defaultClefs>
     xml.endElement();
 }
 
