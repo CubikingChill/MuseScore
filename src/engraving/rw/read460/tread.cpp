@@ -1208,18 +1208,61 @@ void TRead::read(NamedEventList* item, XmlReader& e)
 void TRead::read(InstrumentChange* c, XmlReader& e, ReadContext& ctx)
 {
     Instrument inst;
+    std::vector<ClefTypeList> clefs;   // temporary storage for default clefs
+
     while (e.readNextStartElement()) {
         const AsciiStringView tag(e.name());
+
         if (tag == "Instrument") {
             read(&inst, e, ctx, c->part());
-        } else if (tag == "init") {
+        }
+        else if (tag == "init") {
             c->setInit(e.readBool());
-        } else if (!readProperties(toTextBase(c), e, ctx)) {
+        }
+        else if (tag == "defaultClefs") {
+
+            // --- STEP 4: read clef list ---
+            while (e.readNextStartElement()) {
+                if (e.name() == "clef") {
+                    ClefTypeList list;
+
+                    while (e.readNextStartElement()) {
+                        const AsciiStringView tag2(e.name());
+
+                        if (tag2 == "concert") {
+                            list.concertClef = ClefType(e.readInt());
+                        }
+                        else if (tag2 == "transposing") {
+                            list.transposingClef = ClefType(e.readInt());
+                        }
+                        else {
+                            e.unknown();
+                        }
+                    }
+
+                    clefs.push_back(list);
+                }
+                else {
+                    e.unknown();
+                }
+            }
+        }
+        else if (!readProperties(toTextBase(c), e, ctx)) {
             e.unknown();
         }
     }
 
+    // Set the instrument AFTER reading everything else
     c->setInstrument(inst);
+
+    // --- BACKWARD COMPATIBILITY ---
+    if (clefs.empty()) {
+        for (size_t i = 0; i < inst.cleffTypeCount(); ++i) {
+            clefs.push_back(inst.clefType(i));
+        }
+    }
+
+    c->setDefaultClefs(clefs);
 }
 
 void TRead::read(KeyList* item, XmlReader& e, ReadContext& ctx)
