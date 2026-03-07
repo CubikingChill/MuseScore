@@ -65,6 +65,11 @@ InstrumentChange::InstrumentChange(const Instrument& i, EngravingItem* parent)
 {
     initElementStyle(&instrumentChangeStyle);
     m_instrument = new Instrument(i);
+    m_defaultClefs.clear();
+    for (size_t s = 0; s < i.cleffTypeCount(); ++s) {
+        m_defaultClefs.push_back(i.clefType(s));
+}
+
 }
 
 InstrumentChange::InstrumentChange(const InstrumentChange& is)

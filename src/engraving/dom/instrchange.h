@@ -67,10 +67,14 @@ public:
 
     bool placeMultiple() const override { return false; }
 
+    const std::vector<ClefTypeList>& defaultClefs() const { return m_defaultClefs; }
+    void setDefaultClefs(const std::vector<ClefTypeList>& c) { m_defaultClefs = c; }
+
 private:
 
     Instrument* m_instrument = nullptr;     // Staff holds ownership if part of score
     bool m_init = false;                    // Set if the instrument has been set by the user, as there is no other way to tell.
+    std::vector<ClefTypeList> m_defaultClefs;
 };
 } // namespace mu::engraving
 #endif
