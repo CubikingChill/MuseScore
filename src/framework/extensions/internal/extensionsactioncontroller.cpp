@@ -44,6 +44,10 @@ void ExtensionsActionController::init()
 
 void ExtensionsActionController::registerExtensions()
 {
+    if (!dispatcher()) {
+        return;
+    }
+
     dispatcher()->unReg(this);
 
     for (const Manifest& m : provider()->manifestList()) {
@@ -56,6 +60,10 @@ void ExtensionsActionController::registerExtensions()
     }
 
     dispatcher()->reg(this, "extensions-show-apidump", [this]() { openUri(SHOW_APIDUMP_URI); });
+
+    if (!uiActionsRegister()) {
+        return;
+    }
 
     uiActionsRegister()->unreg(m_uiActions);
     uiActionsRegister()->reg(m_uiActions);

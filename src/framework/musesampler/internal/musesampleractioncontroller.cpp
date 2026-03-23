@@ -30,6 +30,10 @@ void MuseSamplerActionController::init(std::weak_ptr<MuseSamplerResolver> resolv
 {
     m_museSamplerResolver = resolver;
 
+    if (!dispatcher()) {
+        return;
+    }
+
     dispatcher()->reg(this, "musesampler-check", this, &MuseSamplerActionController::checkLibraryIsDetected);
     dispatcher()->reg(this, "musesampler-reload", this, &MuseSamplerActionController::reloadMuseSampler);
 }
