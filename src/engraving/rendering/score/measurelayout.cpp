@@ -2088,7 +2088,8 @@ void MeasureLayout::setCourtesyClef(Measure* m, const Fraction& refClefTick, con
     const Segment* clefSegAtCourtesyTick = m->findSegmentR(SegmentType::Clef | SegmentType::HeaderClef, courtesyClefRTick);
     clefSegAtCourtesyTick
         = !clefSegAtCourtesyTick
-          && prevMeasure ? prevMeasure->findSegmentR(SegmentType::KeySig, courtesyClefTick - prevMeasure->tick()) : clefSegAtCourtesyTick;
+          && prevMeasure ? prevMeasure->findSegmentR(SegmentType::Clef | SegmentType::HeaderClef,
+                                                     courtesyClefTick - prevMeasure->tick()) : clefSegAtCourtesyTick;
 
     bool shouldShowContCourtesy = prevMeasure && prevMeasure->hasCourtesyClef();
 
