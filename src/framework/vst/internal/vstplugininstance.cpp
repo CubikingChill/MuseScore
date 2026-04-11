@@ -137,6 +137,20 @@ void VstPluginInstance::load()
 
         controller->setComponentHandler(m_componentHandlerPtr);
 
+        // Synchronize controller to the component's default state.
+        // Some plugins (e.g. Roland Cloud ZENOLOGY) rely on this to
+        // fully initialize internal data structures; without it the
+        // controller may crash when the editor UI is opened.
+        auto component = m_pluginProvider->component();
+        if (component) {
+            m_componentStateBuffer.seek(0, Steinberg::IBStream::kIBSeekSet, nullptr);
+            m_componentStateBuffer.setSize(0);
+            if (component->getState(&m_componentStateBuffer) == Steinberg::kResultOk) {
+                m_componentStateBuffer.seek(0, Steinberg::IBStream::kIBSeekSet, nullptr);
+                controller->setComponentState(&m_componentStateBuffer);
+            }
+        }
+
         m_isLoaded = true;
         m_loadingCompleted.notify();
     }, threadSecurer()->mainThreadId());
@@ -181,6 +195,7 @@ void VstPluginInstance::stateBufferFromString(VstMemoryStream& buffer, char* str
         return;
     }
 
+    buffer.setSize(0);
     buffer.write(strData, static_cast<Steinberg::int32>(strSize), nullptr);
     buffer.seek(0, Steinberg::IBStream::kIBSeekSet, nullptr);
 }
