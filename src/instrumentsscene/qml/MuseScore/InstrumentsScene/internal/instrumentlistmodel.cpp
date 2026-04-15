@@ -243,10 +243,7 @@ void InstrumentListModel::loadGroups()
         }
     }
     if (!currentGroupInNewGenre && !isSearching()) {
-        size_t idx = 0;
-        if (idx < m_groups.size()) {
-            doSetCurrentGroup(m_groups.at(idx)->id);
-        }
+        setCurrentGroupIndex(0);
     }
 
     emit currentGroupIndexChanged();
@@ -300,6 +297,7 @@ void InstrumentListModel::loadInstruments()
     }
 
     sortInstruments(instruments);
+    LOGI() << "InstrumentListModel::loadInstruments compare" << "oldCount=" << m_instruments.size() << "newCount=" << instruments.size() << "same=" << (m_instruments == instruments);
 
     if (m_instruments == instruments) {
         return;
@@ -364,12 +362,12 @@ void InstrumentListModel::selectInstrument(int instrumentIndex)
         return;
     }
 
-    const CombinedInstrument& instrument = m_instruments[instrumentIndex];
-
     QModelIndex modelIndex = index(instrumentIndex);
     m_selection->select(modelIndex);
 
     if (isSearching()) {
+        const CombinedInstrument& instrument = m_instruments[instrumentIndex];
+
         if (m_selection->selection().size() == 1 && !instrument.templates.empty()) {
             doSetCurrentGroup(instrument.templates.front()->groupId);
         } else {
@@ -542,18 +540,16 @@ void InstrumentListModel::setCurrentGenre(const QString& genreId)
 
 void InstrumentListModel::setCurrentGroup(const QString& groupId)
 {
-    if (doSetCurrentGroup(groupId)) {
-        loadInstruments();
-    }
+    doSetCurrentGroup(groupId);
+    loadInstruments();
 }
 
-bool InstrumentListModel::doSetCurrentGroup(const QString& groupId)
+void InstrumentListModel::doSetCurrentGroup(const QString& groupId)
 {
     if (m_currentGroupId == groupId) {
-        return false;
+        return;
     }
 
     m_currentGroupId = groupId;
     emit currentGroupIndexChanged();
-    return true;
 }
