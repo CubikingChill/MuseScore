@@ -129,7 +129,7 @@ private:
 
     void setCurrentGenre(const QString& genreId);
     void setCurrentGroup(const QString& groupId);
-    void doSetCurrentGroup(const QString& groupId);
+    bool doSetCurrentGroup(const QString& groupId);
 
     QString m_currentGenreId;
     QString m_savedGenreId;
