@@ -271,9 +271,18 @@ bool ImplodeExplode::implode(Score* score)
             if (!s->isChordRestType()) {
                 continue;
             }
-            EngravingItem* dst = s->element(dstTrack);
-            if (dst && dst->isChord()) {
-                Chord* dstChord = toChord(dst);
+            // Fix #174111: find first chord across all voices, not just voice 1
+            EngravingItem* first = s->element(dstTrack);
+            EngravingItem* dst = nullptr;
+            Chord* dstChord = nullptr;
+            for (dstTrack = startTrack; dstTrack < startTrack + VOICES; ++dstTrack) {
+                dst = s->element(dstTrack);
+                if (dst && dst->isChord()) {
+                    dstChord = toChord(dst);
+                    break;
+                }
+            }
+            if (dstChord) {
                 // see if we are tying in to this chord
                 Chord* tied = 0;
                 for (Note* n : dstChord->notes()) {
@@ -284,7 +293,7 @@ bool ImplodeExplode::implode(Score* score)
                 }
                 // loop through each subsequent staff (or track within staff)
                 // looking for notes to add
-                for (track_idx_t srcTrack = startTrack + 1; srcTrack < endTrack; srcTrack++) {
+                for (track_idx_t srcTrack = dstTrack + 1; srcTrack < endTrack; srcTrack++) {
                     EngravingItem* src = s->element(srcTrack);
                     if (src && src->isChord()) {
                         Chord* srcChord = toChord(src);
@@ -325,10 +334,7 @@ bool ImplodeExplode::implode(Score* score)
                         score->undoRemoveElement(src);
                     }
                 }
-            }
-            // TODO - use first voice that actually has a note and implode remaining voices on it?
-            // see https://musescore.org/en/node/174111
-            else if (dst) {
+            } else if (first) {
                 // destination track has something, but it isn't a chord
                 // remove rests from other voices if in "voice mode"
                 for (voice_idx_t i = 1; i < VOICES; ++i) {
