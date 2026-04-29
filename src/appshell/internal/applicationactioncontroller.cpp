@@ -247,6 +247,10 @@ bool ApplicationActionController::quit(bool isAllInstances, const muse::io::path
     }
 
     if (isAllInstances) {
+        if (configuration()->startupModeType() != StartupModeType::ContinueLastSession) {
+            configuration()->setSessionProjectsPaths({});
+        }
+
         multiwindowsProvider()->quitForAll();
     } else {
         multiwindowsProvider()->quitWindow(iocContext());
