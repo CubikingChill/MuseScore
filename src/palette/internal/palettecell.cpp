@@ -32,6 +32,7 @@
 #include "engraving/dom/textbase.h"
 #include "engraving/dom/tremolosinglechord.h"
 #include "engraving/dom/tremolotwochord.h"
+#include "engraving/types/typesconv.h"
 
 #include "engraving/rw/rwregister.h"
 #include "engraving/rw/compat/tremolocompat.h"
@@ -347,7 +348,10 @@ PaletteCellPtr PaletteCell::fromElementMimeData(const QByteArray& data, const mu
         }
     }
 
-    const String name = (element->isFretDiagram()) ? toFretDiagram(element.get())->harmonyPlainText() : element->translatedTypeUserName();
+    String name = (element->isFretDiagram()) ? toFretDiagram(element.get())->harmonyPlainText() : element->translatedTypeUserName();
+    if (element->isActionIcon() && toActionIcon(element.get())->actionType() == ActionIconType::PARENTHESES) {
+        name = TConv::capitalizedUserName(ElementType::ACCIDENTAL).translated();
+    }
 
     return std::make_shared<PaletteCell>(iocCtx, element, name);
 }
