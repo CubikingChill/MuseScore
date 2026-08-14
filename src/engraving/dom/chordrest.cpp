@@ -44,6 +44,7 @@
 #include "measure.h"
 #include "navigate.h"
 #include "note.h"
+#include "ornament.h"
 #include "page.h"
 #include "part.h"
 #include "rehearsalmark.h"
@@ -53,6 +54,7 @@
 #include "staff.h"
 #include "stafftype.h"
 #include "system.h"
+#include "trill.h"
 #include "tuplet.h"
 #include "utils.h"
 #include "volta.h"
@@ -66,6 +68,12 @@ using namespace mu;
 using namespace mu::engraving;
 
 namespace mu::engraving {
+static bool hasExplicitCueNoteOrAccidental(const Trill* trill)
+{
+    Ornament* ornament = trill ? trill->ornament() : nullptr;
+    return ornament && (ornament->cueNoteChord() || ornament->accidentalAbove() || ornament->accidentalBelow());
+}
+
 //---------------------------------------------------------
 //   ChordRest
 //---------------------------------------------------------
@@ -427,6 +435,10 @@ EngravingItem* ChordRest::drop(EditData& data)
             } else {
                 spanner->setTrack(track());
                 spanner->setTrack2(track());
+            }
+            if (spanner->isTrill() && staff()->isDrumStaff(spanner->tick()) && hasExplicitCueNoteOrAccidental(toTrill(spanner))) {
+                delete e;
+                return nullptr;
             }
             score()->undoAddElement(spanner);
             return e;

@@ -33,7 +33,9 @@
 #include "../../dom/noteline.h"
 #include "../../dom/tie.h"
 #include "../../dom/chord.h"
+#include "../../dom/ornament.h"
 #include "../../dom/staff.h"
+#include "../../dom/trill.h"
 
 #include "../types/typesconv.h"
 
@@ -45,6 +47,18 @@
 
 using namespace mu::engraving;
 using namespace mu::engraving::read460;
+
+static bool shouldSkipPastedTrillWithExplicitCueNoteOrAccidental(Spanner* spanner, Score* score)
+{
+    if (!spanner || !spanner->isTrill() || !score) {
+        return false;
+    }
+
+    Staff* staff = score->staff(spanner->staffIdx());
+    Ornament* ornament = toTrill(spanner)->ornament();
+    return staff && staff->isDrumStaff(spanner->tick())
+           && ornament && (ornament->cueNoteChord() || ornament->accidentalAbove() || ornament->accidentalBelow());
+}
 
 //---------------------------------------------------------
 //   ConnectorInfoReader
@@ -343,6 +357,9 @@ void ConnectorInfoReader::readAddConnector(Measure* item, ConnectorInfoReader* i
     case ElementType::VOLTA:
     {
         Spanner* sp = toSpanner(info->connector());
+        if (!sp) {
+            return;
+        }
         const Location& l = info->location();
         Fraction lTick    = l.frac();
         Fraction spTick   = pasteMode ? lTick : (item->tick() + lTick);
@@ -350,6 +367,10 @@ void ConnectorInfoReader::readAddConnector(Measure* item, ConnectorInfoReader* i
             sp->setTrack(l.track());
             sp->setTrack2(sp->track());
             sp->setTick(spTick);
+            if (pasteMode && shouldSkipPastedTrillWithExplicitCueNoteOrAccidental(sp, item->score())) {
+                delete info->releaseConnector();
+                return;
+            }
             item->score()->addSpanner(sp);
         } else if (info->isEnd()) {
             sp->setTrack2(l.track());
@@ -453,6 +474,9 @@ void ConnectorInfoReader::readAddConnector(Score* item, ConnectorInfoReader* inf
     case ElementType::VIBRATO:
     {
         Spanner* sp = toSpanner(info->connector());
+        if (!sp) {
+            return;
+        }
         const Location& l = info->location();
         if (info->isStart()) {
             sp->setAnchor(Spanner::Anchor::SEGMENT);
@@ -461,6 +485,10 @@ void ConnectorInfoReader::readAddConnector(Score* item, ConnectorInfoReader* inf
             sp->setTick(l.frac());
         } else if (info->isEnd()) {
             sp->setTick2(l.frac());
+            if (shouldSkipPastedTrillWithExplicitCueNoteOrAccidental(sp, item)) {
+                delete info->releaseConnector();
+                return;
+            }
             item->undoAddElement(sp);
             if (sp->isOttava()) {
                 sp->staff()->updateOttava();
