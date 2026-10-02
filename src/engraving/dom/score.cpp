@@ -1,4 +1,4 @@
-/*
+﻿/*
  * SPDX-License-Identifier: GPL-3.0-only
  * MuseScore-Studio-CLA-applies
  *
@@ -429,6 +429,14 @@ void Score::setUpTempoMap()
 
     for (Staff* staff : m_staves) {
         staff->clearTimeSig();
+    }
+    if (!isMaster()) {
+        Score* master = masterScore();
+        if (master) {
+            master->setUpTempoMapLater();
+        }
+        m_needSetUpTempoMap = false;
+        return;
     }
 
     if (isMaster()) {
@@ -6324,3 +6332,4 @@ void Score::setLoopBoundaryTick(LoopBoundaryType type, Fraction tick) { m_master
 
 int ScoreLoad::m_loading = 0;
 }
+
